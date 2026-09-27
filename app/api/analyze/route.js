@@ -1,7 +1,7 @@
 // 7월·10월 관찰일지 + 교사 메모 → 1·2학기 성장 보고서 글 생성 (Claude API)
 // 필요한 환경변수: ANTHROPIC_API_KEY
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 const LOG_LIMIT = 40000; // 관찰일지 한 편당 최대 글자 수 (넘으면 앞부분만 사용하고 알려 줌)
 
