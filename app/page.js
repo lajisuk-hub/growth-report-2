@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { calcAge, fmtDate } from './lib/age';
+import { extractTextFromFile } from './lib/extract';
 
 const STORAGE_KEY = 'growth-report-2-v1';
 
@@ -29,6 +30,7 @@ const EMPTY_DATA = {
   childChange: '',
   parentChange: '',
   octLog: '',
+  octMonth: '10월',
   strengths: '',
   teacherMsg: '',
   prep: '',
@@ -55,8 +57,8 @@ const CHARACTERS = [
 ];
 
 const RESULT_FIELDS = [
-  { key: 'dev_summary', label: '① 발달 변화 총평', sub: '7월과 10월을 비교한 가장 큰 변화' },
-  { key: 'dev_items', label: '① 영역별 변화표', sub: '영역 / 7월 모습 / 10월 모습', table: true },
+  { key: 'dev_summary', label: '① 발달 변화 총평', sub: '7월과 2학기를 비교한 가장 큰 변화' },
+  { key: 'dev_items', label: '① 영역별 변화표', sub: '영역 / 7월 모습 / 2학기 모습', table: true },
   { key: 'good_items', label: '요즘 잘하는 것', sub: '한 줄에 한 가지씩' },
   { key: 'worry_before', label: '② 1학기 부모님이 염려·부탁하신 부분' },
   { key: 'worry_child', label: '② 아이의 변화' },
@@ -89,6 +91,52 @@ function compressImage(file, maxDim, cb) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+// 관찰일지 PDF 올리기 상자 — 글자를 뽑아 아래 칸에 채운다
+function LogUpload({ month, value, onChange }) {
+  const [busy, setBusy] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [err, setErr] = useState('');
+  const [open, setOpen] = useState(false);
+  const [over, setOver] = useState(false);
+  const pick = async (f) => {
+    if (!f) return;
+    setErr(''); setBusy(true);
+    try {
+      const txt = await extractTextFromFile(f);
+      onChange(txt);
+      setFileName(f.name);
+    } catch (e) {
+      setErr(e.message || '파일을 읽지 못했어요');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="log-upload">
+      <label
+        className={`drop${busy ? ' busy' : ''}${over ? ' over' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files?.[0]); }}
+      >
+        <input type="file" accept="application/pdf,.pdf,.txt" style={{ display: 'none' }} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+        <span className="ico">📄</span>
+        <span className="t">
+          {busy ? '파일에서 글자를 읽는 중...' : fileName ? `${fileName} — 읽었어요 (${value.length.toLocaleString()}자)` : `우리아이들 ${month} 관찰일지 PDF를 여기에 올려 주세요`}
+        </span>
+        <span className="s">{busy ? '' : '누르거나 파일을 끌어다 놓으세요 · 다른 파일을 올리면 바뀌어요'}</span>
+      </label>
+      {err && <div className="error-box">⚠️ {err}</div>}
+      <button type="button" className="link-btn" onClick={() => setOpen(!open)}>
+        {open ? '▲ 내용 접기' : (value ? `▼ 읽어 온 내용 보기 · 고치기 (${value.length.toLocaleString()}자)` : '▼ PDF가 없으면 내용을 직접 붙여 넣기')}
+      </button>
+      {open && (
+        <textarea className="log" value={value} onChange={(e) => onChange(e.target.value)} placeholder={`${month} 관찰일지 내용을 여기에 붙여 넣어 주세요`} />
+      )}
+    </div>
+  );
 }
 
 // 이름 뒤 조사: 받침이 있으면 '이가', 없으면 '가'
@@ -161,7 +209,7 @@ export default function Home() {
     setError('');
     setNotice('');
     if (!info.childName.trim()) { setError('1단계에서 아이 이름을 먼저 입력해 주세요.'); setStep(1); return; }
-    if (!data.julyLog.trim() && !data.octLog.trim()) { setError('7월 또는 10월 관찰일지를 넣어 주세요.'); return; }
+    if (!data.julyLog.trim() && !data.octLog.trim()) { setError('7월 또는 9·10월 관찰일지 PDF를 올려 주세요.'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/analyze', {
@@ -199,13 +247,13 @@ export default function Home() {
         <div className="app-header">
           <img className="app-mascot" src="/characters/family.png" alt="우리아이들 캐릭터" />
           <h1>우리아이들 1·2학기 성장보고서</h1>
-          <p>7월과 10월 관찰일지를 넣으면, AI가 아이의 발달 변화를 정리해 학부모님께 드릴 4쪽 보고서를 만들어 드려요</p>
+          <p>7월과 2학기(9·10월) 관찰일지 PDF를 올리면, AI가 아이의 발달 변화를 정리해 학부모님께 드릴 4쪽 보고서를 만들어 드려요</p>
         </div>
 
         <div className="steps no-print">
           {stepBtn(1, '1. 기본 정보')}
           {stepBtn(2, '2. 1학기(7월) 자료')}
-          {stepBtn(3, '3. 2학기(10월) 자료')}
+          {stepBtn(3, '3. 2학기(9·10월) 자료')}
           {stepBtn(4, '4. 글 확인')}
           {stepBtn(5, '5. 미리보기 · 저장')}
         </div>
@@ -297,13 +345,12 @@ export default function Home() {
           <div className="card">
             <h2>1학기(7월) 자료</h2>
             <p className="hint">
-              7월 관찰일지를 복사해서 통째로 붙여 넣어 주세요. 길어도 괜찮아요.
+              우리아이들에서 내려받은 7월 관찰일지 PDF를 올려 주세요. 글자를 자동으로 읽어 와요.
               아래 메모는 문장이 아니어도 돼요 — 떠오르는 대로 짧게 적어 주세요.
             </p>
             <div className="field">
-              <label>① 1학기 7월 관찰일지 <span className="sub">(붙여넣기)</span></label>
-              <textarea className="log" value={data.julyLog} onChange={(e) => setD('julyLog', e.target.value)} placeholder="7월 관찰일지 내용을 여기에 붙여 넣어 주세요" />
-              <div className="count">{data.julyLog.length.toLocaleString()}자</div>
+              <label>① 우리아이들 7월 관찰일지를 PDF로 업로드해 주세요</label>
+              <LogUpload month="7월" value={data.julyLog} onChange={(v) => setD('julyLog', v)} />
             </div>
             <div className="field">
               <label>② 1학기에 학부모님이 염려하신 부분 · 부탁하신 부분</label>
@@ -327,12 +374,18 @@ export default function Home() {
         {step === 3 && (
           <>
             <div className="card">
-              <h2>2학기(10월) 자료</h2>
-              <p className="hint">10월 관찰일지를 붙여 넣고, 지금 아이의 모습과 선생님의 마음을 짧게 적어 주세요.</p>
+              <h2>2학기(9·10월) 자료</h2>
+              <p className="hint">우리아이들에서 내려받은 9월 또는 10월 관찰일지 PDF를 올리고, 지금 아이의 모습과 선생님의 마음을 짧게 적어 주세요.</p>
               <div className="field">
-                <label>⑤ 2학기 10월 관찰일지 <span className="sub">(붙여넣기)</span></label>
-                <textarea className="log" value={data.octLog} onChange={(e) => setD('octLog', e.target.value)} placeholder="10월 관찰일지 내용을 여기에 붙여 넣어 주세요" />
-                <div className="count">{data.octLog.length.toLocaleString()}자</div>
+                <label>⑤ 우리아이들 9월 또는 10월 관찰일지를 PDF로 업로드해 주세요</label>
+                <div className="month-pick">
+                  <span>이 관찰일지는</span>
+                  {['9월', '10월'].map((m) => (
+                    <button type="button" key={m} className={data.octMonth === m ? 'on' : ''} onClick={() => setD('octMonth', m)}>{m}</button>
+                  ))}
+                  <span>것이에요</span>
+                </div>
+                <LogUpload month={data.octMonth || '10월'} value={data.octLog} onChange={(v) => setD('octLog', v)} />
               </div>
               <div className="field">
                 <label>⑥ 지금 아이가 잘하는 것</label>
@@ -410,7 +463,7 @@ export default function Home() {
                       <div className="items-row" key={i}>
                         <input type="text" value={it.area || ''} placeholder="영역" onChange={(e) => updItem(i, 'area', e.target.value)} />
                         <textarea value={it.before || ''} placeholder="7월 모습" onChange={(e) => updItem(i, 'before', e.target.value)} />
-                        <textarea value={it.after || ''} placeholder="10월 모습" onChange={(e) => updItem(i, 'after', e.target.value)} />
+                        <textarea value={it.after || ''} placeholder={`${data.octMonth || '10월'} 모습`} onChange={(e) => updItem(i, 'after', e.target.value)} />
                         <button className="mini" onClick={() => setResult((p) => ({ ...p, dev_items: p.dev_items.filter((_, j) => j !== i) }))}>✕</button>
                       </div>
                     ))}
@@ -448,7 +501,7 @@ export default function Home() {
       {step === 5 && (
         <div className="preview-scroll">
           <div className="preview-wrap print-area">
-            <ReportSheets info={info} result={result} photos={photos} age={age} />
+            <ReportSheets info={info} result={result} photos={photos} age={age} data={data} />
           </div>
         </div>
       )}
@@ -494,7 +547,7 @@ function SecHead({ num, title, chip, chipClass, char }) {
   );
 }
 
-function ReportSheets({ info, result, photos, age }) {
+function ReportSheets({ info, result, photos, age, data }) {
   const name = info.childName || '○○';
   const ch = info.character || 'girl';
   const band = (
@@ -503,6 +556,7 @@ function ReportSheets({ info, result, photos, age }) {
       <span>{info.period || '1·2학기'}</span>
     </div>
   );
+  const m2 = data?.octMonth || '10월';
   const good = lines(result.good_items);
   const prep = lines(result.prep_items);
   const ageItems = lines(result.age_items).map((l) => {
@@ -540,7 +594,7 @@ function ReportSheets({ info, result, photos, age }) {
             <div className="row"><span className="k">담임 교사</span><span className="v">{info.teacherName ? `${info.teacherName} 선생님` : ''}</span></div>
             <div className="row"><span className="k">기록 기간</span><span className="v">{info.period || ''}</span></div>
           </div>
-          <div className="cover-quote">7월의 {name}, 10월의 {name} — 두 계절을 지나며 자라난 이야기</div>
+          <div className="cover-quote">7월의 {name}, {m2}의 {name} — 두 계절을 지나며 자라난 이야기</div>
         </div>
       </div>
 
@@ -551,7 +605,7 @@ function ReportSheets({ info, result, photos, age }) {
           <div className="page-head">
             <div>
               <h3>{name}의 발달 변화 이야기</h3>
-              <div className="head-sub">7월 관찰일지와 10월 관찰일지를 비교해 정리했습니다.</div>
+              <div className="head-sub">7월 관찰일지와 {m2} 관찰일지를 비교해 정리했습니다.</div>
             </div>
             <img className="head-char" src={`/characters/${ch}.png`} alt="" />
           </div>
@@ -566,7 +620,7 @@ function ReportSheets({ info, result, photos, age }) {
               <div className="section">
                 <table className="dev-table">
                   <thead>
-                    <tr><th className="c-area">영역</th><th>🌱 7월의 모습</th><th>🌳 10월의 모습</th></tr>
+                    <tr><th className="c-area">영역</th><th>🌱 7월의 모습</th><th>🌳 {m2}의 모습</th></tr>
                   </thead>
                   <tbody>
                     {items.map((it, i) => (

@@ -150,6 +150,30 @@ input, textarea, select { font-family: inherit; color: var(--ink); }
   margin: 10px 0;
 }
 
+/* 관찰일지 PDF 올리기 */
+.log-upload .drop {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border: 2px dashed var(--sun); border-radius: 14px; background: var(--sun-pale);
+  padding: 22px 14px; text-align: center; cursor: pointer;
+}
+.log-upload .drop:hover, .log-upload .drop.over { background: #ffeeb5; border-color: var(--sun-deep); }
+.log-upload .drop.busy { opacity: .7; cursor: wait; }
+.log-upload .ico { font-size: 30px; }
+.log-upload .t { font-size: 15px; font-weight: bold; color: var(--brown); }
+.log-upload .s { font-size: 12.5px; color: var(--ink-soft); }
+.log-upload .link-btn {
+  background: none; border: none; color: var(--sprout-deep); font-size: 13px;
+  padding: 8px 2px 0; text-decoration: underline;
+}
+.log-upload textarea.log { margin-top: 6px; }
+
+/* 9월/10월 고르기 */
+.month-pick { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 13.5px; color: var(--ink-soft); }
+.month-pick button {
+  border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 14px; font-size: 14px; color: var(--ink-soft);
+}
+.month-pick button.on { background: var(--sun); border-color: var(--sun); color: var(--brown); font-weight: bold; }
+
 /* 변화표 편집 */
 .items-edit { display: flex; flex-direction: column; gap: 6px; }
 .items-row { display: grid; grid-template-columns: 90px 1fr 1fr 30px; gap: 6px; align-items: stretch; }
