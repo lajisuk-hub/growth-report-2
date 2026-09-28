@@ -250,6 +250,14 @@ export default function Home() {
           <p>7월과 2학기(9·10월) 관찰일지 PDF를 올리면, AI가 아이의 발달 변화를 정리해 학부모님께 드릴 4쪽 보고서를 만들어 드려요</p>
         </div>
 
+        <div className="notice-bar no-print">
+          <span className="ico">📢</span>
+          <div>
+            <b>이 사이트는 우리아이들 이용자를 위한 사이트입니다.</b><br />
+            우리아이들 자료가 아닌 자료를 올릴 경우 비용이 청구될 수 있습니다.
+          </div>
+        </div>
+
         <div className="steps no-print">
           {stepBtn(1, '1. 기본 정보')}
           {stepBtn(2, '2. 1학기(7월) 자료')}
