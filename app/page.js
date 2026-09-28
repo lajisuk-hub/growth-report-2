@@ -159,6 +159,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [agreed, setAgreed] = useState(false); // 안내 팝업 확인 여부 (들어올 때마다 다시 보여 줌)
   const loaded = useRef(false);
 
   // 저장된 내용 불러오기
@@ -243,6 +244,17 @@ export default function Home() {
 
   return (
     <>
+      {!agreed && (
+        <div className="modal-back">
+          <div className="modal">
+            <img src="/characters/family.png" alt="" />
+            <h3>📢 안내</h3>
+            <p><b>이 사이트는 우리아이들 이용자를 위한 사이트입니다.</b></p>
+            <p>우리아이들 자료가 아닌 자료를 올릴 경우<br />비용이 청구될 수 있습니다.</p>
+            <button className="btn btn-primary btn-big" onClick={() => setAgreed(true)}>확인했습니다</button>
+          </div>
+        </div>
+      )}
       <div className="app-ui">
         <div className="app-header">
           <img className="app-mascot" src="/characters/family.png" alt="우리아이들 캐릭터" />
