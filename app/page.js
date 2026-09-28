@@ -160,7 +160,13 @@ export default function Home() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [agreed, setAgreed] = useState(false); // 안내 팝업 확인 여부 (들어올 때마다 다시 보여 줌)
+  const [closed, setClosed] = useState(false); // 운영 종료 스위치 (Vercel 환경변수 APP_CLOSED=1)
   const loaded = useRef(false);
+
+  // 운영 상태 확인 (닫혀 있으면 안내 화면만 보여 준다)
+  useEffect(() => {
+    fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => { if (d.closed) setClosed(true); }).catch(() => {});
+  }, []);
 
   // 저장된 내용 불러오기
   useEffect(() => {
@@ -241,6 +247,16 @@ export default function Home() {
   );
 
   const updItem = (i, k, v) => setResult((p) => ({ ...p, dev_items: p.dev_items.map((it, j) => (j === i ? { ...it, [k]: v } : it)) }));
+
+  if (closed) {
+    return (
+      <div className="closed-screen">
+        <img src="/characters/family.png" alt="" />
+        <h1>지금은 운영하지 않는 사이트입니다</h1>
+        <p>우리아이들 1·2학기 성장보고서 서비스는 현재 잠시 문을 닫았어요.<br />문의는 우리아이들 그룹챗으로 부탁드립니다.</p>
+      </div>
+    );
+  }
 
   return (
     <>

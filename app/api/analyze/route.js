@@ -91,6 +91,9 @@ function clip(s, n) {
 
 export async function POST(request) {
   try {
+    if (process.env.APP_CLOSED === '1') {
+      return Response.json({ error: '지금은 운영하지 않는 사이트입니다.' }, { status: 503 });
+    }
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return Response.json({ error: 'API 키가 설정되지 않았습니다 (ANTHROPIC_API_KEY)' }, { status: 500 });

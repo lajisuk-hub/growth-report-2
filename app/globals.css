@@ -46,6 +46,11 @@ input, textarea, select { font-family: inherit; color: var(--ink); }
 }
 .app-header p { color: var(--ink-soft); font-size: 14px; margin-top: 4px; }
 
+.closed-screen { max-width: 640px; margin: 80px auto; padding: 0 20px; text-align: center; }
+.closed-screen img { width: 320px; max-width: 80%; margin: 0 auto 16px; display: block; }
+.closed-screen h1 { font-family: 'Gowun Batang', serif; font-size: 26px; color: var(--brown); margin-bottom: 12px; }
+.closed-screen p { font-size: 15px; line-height: 1.7; color: var(--ink-soft); }
+
 .modal-back {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(74, 58, 46, .55);
