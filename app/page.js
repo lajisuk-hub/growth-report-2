@@ -57,8 +57,8 @@ const CHARACTERS = [
 ];
 
 const RESULT_FIELDS = [
-  { key: 'dev_summary', label: '① 발달 변화 총평', sub: '7월과 2학기를 비교한 가장 큰 변화' },
-  { key: 'dev_items', label: '① 영역별 변화표', sub: '영역 / 7월 모습 / 2학기 모습', table: true },
+  { key: 'dev_summary', label: '① 발달 변화 총평', sub: '1학기와 2학기를 비교한 가장 큰 변화' },
+  { key: 'dev_items', label: '① 영역별 변화표', sub: '영역 / 1학기 모습 / 2학기 모습', table: true },
   { key: 'good_items', label: '요즘 잘하는 것', sub: '한 줄에 한 가지씩' },
   { key: 'worry_before', label: '② 1학기 부모님이 염려·부탁하신 부분' },
   { key: 'worry_child', label: '② 아이의 변화' },
@@ -462,8 +462,8 @@ export default function Home() {
                     {result.dev_items.map((it, i) => (
                       <div className="items-row" key={i}>
                         <input type="text" value={it.area || ''} placeholder="영역" onChange={(e) => updItem(i, 'area', e.target.value)} />
-                        <textarea value={it.before || ''} placeholder="7월 모습" onChange={(e) => updItem(i, 'before', e.target.value)} />
-                        <textarea value={it.after || ''} placeholder={`${data.octMonth || '10월'} 모습`} onChange={(e) => updItem(i, 'after', e.target.value)} />
+                        <textarea value={it.before || ''} placeholder="1학기 모습" onChange={(e) => updItem(i, 'before', e.target.value)} />
+                        <textarea value={it.after || ''} placeholder="2학기 모습" onChange={(e) => updItem(i, 'after', e.target.value)} />
                         <button className="mini" onClick={() => setResult((p) => ({ ...p, dev_items: p.dev_items.filter((_, j) => j !== i) }))}>✕</button>
                       </div>
                     ))}
@@ -594,7 +594,7 @@ function ReportSheets({ info, result, photos, age, data }) {
             <div className="row"><span className="k">담임 교사</span><span className="v">{info.teacherName ? `${info.teacherName} 선생님` : ''}</span></div>
             <div className="row"><span className="k">기록 기간</span><span className="v">{info.period || ''}</span></div>
           </div>
-          <div className="cover-quote">7월의 {name}, {m2}의 {name} — 두 계절을 지나며 자라난 이야기</div>
+          <div className="cover-quote">1학기의 {name}, 2학기의 {name} — 두 계절을 지나며 자라난 이야기</div>
         </div>
       </div>
 
@@ -605,7 +605,7 @@ function ReportSheets({ info, result, photos, age, data }) {
           <div className="page-head">
             <div>
               <h3>{name}의 발달 변화 이야기</h3>
-              <div className="head-sub">7월 관찰일지와 {m2} 관찰일지를 비교해 정리했습니다.</div>
+              <div className="head-sub">1학기(7월)와 2학기({m2}) 관찰일지를 비교해 정리했습니다.</div>
             </div>
             <img className="head-char" src={`/characters/${ch}.png`} alt="" />
           </div>
@@ -620,7 +620,7 @@ function ReportSheets({ info, result, photos, age, data }) {
               <div className="section">
                 <table className="dev-table">
                   <thead>
-                    <tr><th className="c-area">영역</th><th>🌱 7월의 모습</th><th>🌳 {m2}의 모습</th></tr>
+                    <tr><th className="c-area">영역</th><th>🌱 1학기(7월)의 모습</th><th>🌳 2학기({m2})의 모습</th></tr>
                   </thead>
                   <tbody>
                     {items.map((it, i) => (
