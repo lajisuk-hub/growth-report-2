@@ -641,7 +641,7 @@ function ReportSheets({ info, result, photos, age, data }) {
           <div className="page-head">
             <div>
               <h3>{name}의 발달 변화 이야기</h3>
-              <div className="head-sub">1학기(7월)와 2학기({m2}) 관찰일지를 비교해 정리했습니다.</div>
+              <div className="head-sub">1학기와 2학기({m2}) 관찰일지를 비교해 정리했습니다.</div>
             </div>
             <img className="head-char" src={`/characters/${ch}.png`} alt="" />
           </div>
@@ -656,7 +656,7 @@ function ReportSheets({ info, result, photos, age, data }) {
               <div className="section">
                 <table className="dev-table">
                   <thead>
-                    <tr><th className="c-area">영역</th><th>🌱 1학기(7월)의 모습</th><th>🌳 2학기({m2})의 모습</th></tr>
+                    <tr><th className="c-area">영역</th><th>🌱 1학기의 모습</th><th>🌳 2학기({m2})의 모습</th></tr>
                   </thead>
                   <tbody>
                     {items.map((it, i) => (
