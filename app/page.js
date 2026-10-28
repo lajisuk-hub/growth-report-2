@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { calcAge, fmtDate } from './lib/age';
 import { extractTextFromFile } from './lib/extract';
+import { detectFocus, focusPosition, clickToFocus } from './lib/face';
 
 const STORAGE_KEY = 'growth-report-2-v1';
 
@@ -22,6 +23,7 @@ const EMPTY_INFO = {
   period: '2026학년도 1·2학기',
   character: 'girl',
   coverPhoto: '',
+  coverFocus: null, // 표지 사진 속 얼굴 위치 {x, y}
 };
 
 const EMPTY_DATA = {
@@ -91,6 +93,32 @@ function compressImage(file, maxDim, cb) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+// 네모 칸에 잘려 들어가는 사진 — 얼굴(focus)이 칸 가운데 오게 맞춘다. onPick이 있으면 눌러서 위치를 고칠 수 있다
+function FocusImg({ src, focus, onPick, alt = '', className }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState('');
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setPos(focusPosition(focus, el.naturalWidth, el.naturalHeight, el.clientWidth, el.clientHeight));
+    if (el.complete) update();
+    el.addEventListener('load', update);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    if (ro) ro.observe(el);
+    return () => { el.removeEventListener('load', update); if (ro) ro.disconnect(); };
+  }, [src, focus]);
+  return (
+    <img
+      ref={ref}
+      src={src}
+      alt={alt}
+      className={className}
+      style={{ objectPosition: pos || undefined, cursor: onPick ? 'crosshair' : undefined }}
+      onClick={onPick ? (e) => onPick(clickToFocus(e, e.currentTarget)) : undefined}
+    />
+  );
 }
 
 // 관찰일지 PDF 올리기 상자 — 글자를 뽑아 아래 칸에 채운다
@@ -209,8 +237,29 @@ export default function Home() {
 
   const addPhoto = (file) => {
     if (!file || photos.length >= 4) return;
-    compressImage(file, 1200, (src) => setPhotos((p) => (p.length >= 4 ? p : [...p, { src, caption: '' }])));
+    compressImage(file, 1200, (src) => {
+      setPhotos((p) => (p.length >= 4 ? p : [...p, { src, caption: '' }]));
+    });
   };
+
+  // 사진 속 얼굴을 찾아 그 사진의 focus로 넣는다 (손으로 고친 것은 건드리지 않음)
+  const findFace = (src) => {
+    detectFocus(src).then((focus) => {
+      setPhotos((p) => p.map((x) => (x.src === src && !x.focus ? { ...x, focus } : x)));
+    });
+  };
+  const findCoverFace = (src) => {
+    detectFocus(src).then((focus) => {
+      setInfo((p) => (p.coverPhoto === src && !p.coverFocus ? { ...p, coverFocus: focus } : p));
+    });
+  };
+
+  // 얼굴 위치가 없는 사진(새로 올린 것·예전에 올려 둔 것)은 얼굴을 찾아 준다
+  useEffect(() => {
+    photos.forEach((p) => { if (p.src && !p.focus) findFace(p.src); });
+    if (info.coverPhoto && !info.coverFocus) findCoverFace(info.coverPhoto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos.length, info.coverPhoto]);
 
   const runAi = async () => {
     setError('');
@@ -359,14 +408,14 @@ export default function Home() {
               {info.coverPhoto ? (
                 <div className="photo-grid">
                   <div className="photo-slot">
-                    <img src={info.coverPhoto} alt="표지 사진" />
-                    <button className="remove" onClick={() => setI('coverPhoto', '')}>✕</button>
+                    <FocusImg src={info.coverPhoto} focus={info.coverFocus} alt="표지 사진" onPick={(f) => setI('coverFocus', f)} />
+                    <button className="remove" onClick={() => setInfo((p) => ({ ...p, coverPhoto: '', coverFocus: null }))}>✕</button>
                   </div>
                 </div>
               ) : (
                 <input type="file" accept="image/*" onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) compressImage(f, 1200, (src) => setI('coverPhoto', src));
+                  if (f) compressImage(f, 1200, (src) => { setInfo((p) => ({ ...p, coverPhoto: src, coverFocus: null })); });
                   e.target.value = '';
                 }} />
               )}
@@ -439,11 +488,11 @@ export default function Home() {
 
             <div className="card">
               <h2>활동 사진 (최대 4장)</h2>
-              <p className="hint">2쪽과 3쪽에 두 장씩 실려요. 사진 아래 한 줄 설명도 적을 수 있어요.</p>
+              <p className="hint">2쪽과 3쪽에 두 장씩 실려요. 사진 아래 한 줄 설명도 적을 수 있어요.<br />아이 얼굴이 가운데 오도록 자동으로 맞춰요. 마음에 안 들면 <b>사진에서 얼굴을 눌러</b> 주세요.</p>
               <div className="photo-grid">
                 {photos.map((p, i) => (
                   <div className="photo-slot" key={i}>
-                    <img src={p.src} alt={`사진 ${i + 1}`} />
+                    <FocusImg src={p.src} focus={p.focus} alt={`사진 ${i + 1}`} onPick={(f) => setPhotos((list) => list.map((x, j) => (j === i ? { ...x, focus: f } : x)))} />
                     <button className="remove" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>✕</button>
                     <input
                       type="text"
@@ -554,7 +603,7 @@ function PhotoBand({ items, small }) {
     <div className={`photo-band${small ? ' small' : ''}`}>
       {list.map((p, i) => (
         <div className="report-photo" key={i}>
-          <div className="ph-frame"><img src={p.src} alt="" /></div>
+          <div className="ph-frame"><FocusImg src={p.src} focus={p.focus} /></div>
           {p.caption ? <div className="cap">✿ {p.caption}</div> : null}
         </div>
       ))}
@@ -612,7 +661,7 @@ function ReportSheets({ info, result, photos, age, data }) {
           <div className="cover-photo-row">
             <div className="cover-photo-mat">
               <div className="inner">
-                {info.coverPhoto ? <img src={info.coverPhoto} alt="" /> : <img className="ph-char" src={`/characters/${ch}.png`} alt="" />}
+                {info.coverPhoto ? <FocusImg src={info.coverPhoto} focus={info.coverFocus} /> : <img className="ph-char" src={`/characters/${ch}.png`} alt="" />}
               </div>
               {info.coverPhoto ? <img className="cover-char" src={`/characters/${ch}.png`} alt="" /> : null}
             </div>
