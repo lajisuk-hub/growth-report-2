@@ -574,7 +574,7 @@ export default function Home() {
             <p className="hint">
               아래에 실제 인쇄될 4쪽이 보여요. 버튼을 누른 뒤 인쇄 화면에서
               <b> 대상(프린터)을 &lsquo;PDF로 저장&rsquo;</b>으로 고르면 PDF 파일로 저장돼요.
-              종이로 인쇄하면 A4 앞뒤 2장이에요. 글이 쪽을 넘치면 4단계에서 조금 줄여 주세요.
+              종이로 인쇄하면 A4 앞뒤 2장이에요.<br />✏️ <b>보고서의 글을 눌러 바로 고칠 수 있어요.</b> 다른 곳을 누르면 저장돼요. 글이 쪽을 넘치면 조금 줄여 주세요.
             </p>
             <div className="btn-row">
               <button className="btn btn-primary btn-big" onClick={() => window.print()}>🖨️ 인쇄 / PDF로 저장</button>
@@ -586,7 +586,11 @@ export default function Home() {
       {step === 5 && (
         <div className="preview-scroll">
           <div className="preview-wrap print-area">
-            <ReportSheets info={info} result={result} photos={photos} age={age} data={data} />
+            <ReportSheets
+              info={info} result={result} photos={photos} age={age} data={data}
+              onEdit={setR}
+              onCaption={(i, v) => setPhotos((list) => list.map((x, j) => (j === i ? { ...x, caption: v } : x)))}
+            />
           </div>
         </div>
       )}
@@ -596,15 +600,46 @@ export default function Home() {
 
 // ───────── 보고서 4쪽 ─────────
 
-function PhotoBand({ items, small }) {
-  const list = items.filter(Boolean);
+// 미리보기에서 글을 눌러 바로 고치는 칸 — 다른 곳을 누르는 순간 저장 (growth-report-semester2에서 복사, 태그를 고를 수 있게)
+function EditableText({ value, onChange, as: Tag = 'p', className }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && ref.current.innerText !== value) ref.current.innerText = value;
+  }, [value]);
+  if (!onChange) return <Tag className={className}>{value}</Tag>;
+  return (
+    <Tag
+      ref={ref}
+      className={`editable${className ? ' ' + className : ''}`}
+      contentEditable
+      suppressContentEditableWarning
+      title="눌러서 고칠 수 있어요"
+      onBlur={(e) => {
+        const v = e.currentTarget.innerText.replace(/\n+$/, '');
+        if (v !== value) onChange(v);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+      }}
+    />
+  );
+}
+
+// 줄 목록(잘하는 것·2학기 준비 등) 중 한 줄을 고친다 — 비우면 그 줄은 빠진다
+const editLine = (list, i, v) => list.map((x, j) => (j === i ? v.replace(/\n+/g, ' ').trim() : x)).filter(Boolean).join('\n');
+
+function PhotoBand({ items, small, start = 0, onCaption }) {
+  const list = items.map((p, i) => p && { ...p, idx: start + i }).filter(Boolean);
   if (!list.length) return null;
   return (
     <div className={`photo-band${small ? ' small' : ''}`}>
-      {list.map((p, i) => (
-        <div className="report-photo" key={i}>
+      {list.map((p) => (
+        <div className="report-photo" key={p.idx}>
           <div className="ph-frame"><FocusImg src={p.src} focus={p.focus} /></div>
-          {p.caption ? <div className="cap">✿ {p.caption}</div> : null}
+          {p.caption ? (
+            <div className="cap">✿ <EditableText as="span" value={p.caption} onChange={onCaption && ((v) => onCaption(p.idx, v))} /></div>
+          ) : null}
         </div>
       ))}
     </div>
@@ -632,7 +667,10 @@ function SecHead({ num, title, chip, chipClass, char }) {
   );
 }
 
-function ReportSheets({ info, result, photos, age, data }) {
+function ReportSheets({ info, result, photos, age, data, onEdit, onCaption }) {
+  const ed = (k) => onEdit && ((v) => onEdit(k, v));
+  const edDev = (i, f) => onEdit && ((v) => onEdit('dev_items', result.dev_items.map((x, j) => (j === i ? { ...x, [f]: v } : x))));
+  const edLine = (k, list, i) => onEdit && ((v) => onEdit(k, editLine(list, i, v)));
   const name = info.childName || '○○';
   const ch = info.character || 'girl';
   const band = (
@@ -648,6 +686,12 @@ function ReportSheets({ info, result, photos, age, data }) {
     return m ? { k: m[1].trim(), v: m[2].trim() } : { k: '', v: l };
   });
   const items = (result.dev_items || []).filter((it) => (it.area || it.before || it.after));
+  const ageLines = lines(result.age_items);
+  // 「영역: 설명」 줄의 앞(영역)이나 뒤(설명)만 고친다
+  const edAge = (i, f) => onEdit && ((v) => {
+    const a = { ...ageItems[i], [f]: v.replace(/\n+/g, ' ').trim() };
+    onEdit('age_items', editLine(ageLines, i, a.k ? `${a.k}: ${a.v}` : a.v));
+  });
 
   return (
     <>
@@ -697,7 +741,7 @@ function ReportSheets({ info, result, photos, age, data }) {
             {result.dev_summary?.trim() ? (
               <div className="section">
                 <SecHead num="01" title="한눈에 보는 성장 변화" chip="발달 변화" chipClass="chip-sun" />
-                <p>{result.dev_summary}</p>
+                <EditableText value={result.dev_summary} onChange={ed('dev_summary')} />
               </div>
             ) : null}
             {items.length ? (
@@ -707,13 +751,16 @@ function ReportSheets({ info, result, photos, age, data }) {
                     <tr><th className="c-area">영역</th><th>🌱 1학기의 모습</th><th>🌳 2학기의 모습</th></tr>
                   </thead>
                   <tbody>
-                    {items.map((it, i) => (
-                      <tr key={i}>
-                        <td className="c-area">{it.area}</td>
-                        <td>{it.before}</td>
-                        <td>{it.after}</td>
-                      </tr>
-                    ))}
+                    {items.map((it) => {
+                      const i = result.dev_items.indexOf(it);
+                      return (
+                        <tr key={i}>
+                          <EditableText as="td" className="c-area" value={it.area || ''} onChange={edDev(i, 'area')} />
+                          <EditableText as="td" value={it.before || ''} onChange={edDev(i, 'before')} />
+                          <EditableText as="td" value={it.after || ''} onChange={edDev(i, 'after')} />
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -721,11 +768,11 @@ function ReportSheets({ info, result, photos, age, data }) {
             {good.length ? (
               <div className="section good-box">
                 <div className="g-title">⭐ 요즘 {nameGa(name)} 잘하는 것</div>
-                <ul>{good.map((g, i) => <li key={i}>{g}</li>)}</ul>
+                <ul>{good.map((g, i) => <EditableText as="li" key={i} value={g} onChange={edLine('good_items', good, i)} />)}</ul>
               </div>
             ) : null}
           </div>
-          <PhotoBand items={[photos[0], photos[1]]} />
+          <PhotoBand items={[photos[0], photos[1]]} start={0} onCaption={onCaption} />
           <PageFoot info={info} name={name} page="02" />
         </div>
       </div>
@@ -747,13 +794,13 @@ function ReportSheets({ info, result, photos, age, data }) {
                 <SecHead num="02" title="부모님의 걱정, 이렇게 달라졌어요" chip="가정 연계" chipClass="chip-clay" />
                 <div className="worry-grid">
                   {result.worry_before?.trim() ? (
-                    <div className="w-box w-before"><div className="w-t">1학기에 염려·부탁하신 부분</div><p>{result.worry_before}</p></div>
+                    <div className="w-box w-before"><div className="w-t">1학기에 염려·부탁하신 부분</div><EditableText value={result.worry_before} onChange={ed('worry_before')} /></div>
                   ) : null}
                   {result.worry_child?.trim() ? (
-                    <div className="w-box w-child"><div className="w-t">지금 {name}의 변화</div><p>{result.worry_child}</p></div>
+                    <div className="w-box w-child"><div className="w-t">지금 {name}의 변화</div><EditableText value={result.worry_child} onChange={ed('worry_child')} /></div>
                   ) : null}
                   {result.worry_parent?.trim() ? (
-                    <div className="w-box w-parent"><div className="w-t">부모님의 변화</div><p>{result.worry_parent}</p></div>
+                    <div className="w-box w-parent"><div className="w-t">부모님의 변화</div><EditableText value={result.worry_parent} onChange={ed('worry_parent')} /></div>
                   ) : null}
                 </div>
               </div>
@@ -761,12 +808,12 @@ function ReportSheets({ info, result, photos, age, data }) {
             {(result.prep_intro || prep.length) ? (
               <div className="section prep-box">
                 <SecHead num="03" title="선생님의 2학기 준비" chip="교사 지원 계획" chipClass="chip-sage" />
-                {result.prep_intro?.trim() ? <p className="intro">{result.prep_intro}</p> : null}
-                {prep.length ? <ul className="check">{prep.map((p, i) => <li key={i}>{p}</li>)}</ul> : null}
+                {result.prep_intro?.trim() ? <EditableText className="intro" value={result.prep_intro} onChange={ed('prep_intro')} /> : null}
+                {prep.length ? <ul className="check">{prep.map((p, i) => <EditableText as="li" key={i} value={p} onChange={edLine('prep_items', prep, i)} />)}</ul> : null}
               </div>
             ) : null}
           </div>
-          <PhotoBand items={[photos[2], photos[3]]} small />
+          <PhotoBand items={[photos[2], photos[3]]} start={2} small onCaption={onCaption} />
           <PageFoot info={info} name={name} page="03" />
         </div>
       </div>
@@ -788,13 +835,13 @@ function ReportSheets({ info, result, photos, age, data }) {
                 <div className="a-title">
                   <span className="sec-num">04</span> {age.text ? `${age.text} 시기에 필요한 발달` : '이 연령에 필요한 발달'}
                 </div>
-                {result.age_intro?.trim() ? <p className="intro">{result.age_intro}</p> : null}
+                {result.age_intro?.trim() ? <EditableText className="intro" value={result.age_intro} onChange={ed('age_intro')} /> : null}
                 {ageItems.length ? (
                   <div className="age-items">
                     {ageItems.map((a, i) => (
                       <div className="age-item" key={i}>
-                        {a.k ? <span className="ak">{a.k}</span> : null}
-                        <span className="av">{a.v}</span>
+                        {a.k ? <EditableText as="span" className="ak" value={a.k} onChange={edAge(i, 'k')} /> : null}
+                        <EditableText as="span" className="av" value={a.v} onChange={edAge(i, 'v')} />
                       </div>
                     ))}
                   </div>
@@ -805,7 +852,7 @@ function ReportSheets({ info, result, photos, age, data }) {
               <div className="letter-box">
                 <img className="letter-char" src={`/characters/${ch}.png`} alt="" />
                 <div className="letter-title">{name} 부모님께 드리는 편지</div>
-                <p>{result.letter}</p>
+                <EditableText value={result.letter} onChange={ed('letter')} />
                 <div className="sign">{name}의 담임 {info.teacherName || ''} 드림</div>
               </div>
             ) : null}

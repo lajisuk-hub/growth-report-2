@@ -522,3 +522,9 @@ input, textarea, select { font-family: inherit; color: var(--ink); }
   }
   .sheet:last-child { page-break-after: auto; break-after: auto; }
 }
+
+/* 미리보기에서 글을 눌러 바로 고치기 (growth-report-semester2와 같은 모양) */
+.editable { outline: 1px dashed transparent; outline-offset: 3px; border-radius: 4px; cursor: text; transition: outline-color .15s, background .15s; }
+.editable:hover { outline-color: #d8c08a; }
+.editable:focus { outline: 2px solid #c9a55c; background: #fffdf6; }
+@media print { .editable, .editable:hover, .editable:focus { outline: none !important; background: transparent !important; } }
